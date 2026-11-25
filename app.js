@@ -1,8 +1,13 @@
 (() => {
+  const SOUND_STORAGE_KEY = 'smc_engine_sound_v1';
+
   const state = {
     signals: [],
     logs: JSON.parse(localStorage.getItem(CONFIG.storageKeys.logs) || '[]'),
     mode: localStorage.getItem(CONFIG.storageKeys.mode) || CONFIG.exchanges.defaultMode,
+    soundEnabled: localStorage.getItem(SOUND_STORAGE_KEY) !== 'false',
+    alertedIds: new Set(),
+    audioCtx: null,
     autoTimer: null,
     isScanning: false
   };
@@ -12,6 +17,7 @@
     stateFilter: document.getElementById('stateFilter'),
     scanBtn: document.getElementById('scanBtn'),
     autoBtn: document.getElementById('autoBtn'),
+    soundBtn: document.getElementById('soundBtn'),
     clearLogBtn: document.getElementById('clearLogBtn'),
     statScanned: document.getElementById('statScanned'),
     statWatchlist: document.getElementById('statWatchlist'),
@@ -21,6 +27,66 @@
     signalsList: document.getElementById('signalsList'),
     logList: document.getElementById('logList')
   };
+
+  function getAudioContext() {
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContextClass) return null;
+    if (!state.audioCtx) {
+      state.audioCtx = new AudioContextClass();
+    }
+    if (state.audioCtx.state === 'suspended') {
+      state.audioCtx.resume().catch(() => {});
+    }
+    return state.audioCtx;
+  }
+
+  function playAlertSound() {
+    if (!state.soundEnabled) return;
+    const ctx = getAudioContext();
+    if (!ctx) return;
+
+    const now = ctx.currentTime;
+    const notes = [
+      { freq: 880, start: 0, duration: 0.14 },
+      { freq: 1174.66, start: 0.16, duration: 0.22 }
+    ];
+
+    notes.forEach(({ freq, start, duration }) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(freq, now + start);
+
+      gain.gain.setValueAtTime(0.0001, now + start);
+      gain.gain.exponentialRampToValueAtTime(0.18, now + start + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + start + duration);
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+
+      osc.start(now + start);
+      osc.stop(now + start + duration + 0.02);
+    });
+  }
+
+  function syncSoundButton() {
+    if (!el.soundBtn) return;
+    el.soundBtn.textContent = state.soundEnabled ? 'Sound: ON' : 'Sound: OFF';
+    el.soundBtn.classList.toggle('active', state.soundEnabled);
+  }
+
+  function toggleSound() {
+    state.soundEnabled = !state.soundEnabled;
+    localStorage.setItem(SOUND_STORAGE_KEY, String(state.soundEnabled));
+    syncSoundButton();
+    if (state.soundEnabled) {
+      playAlertSound();
+      addLog('Sound alert enabled.');
+    } else {
+      addLog('Sound alert muted.');
+    }
+  }
 
   function addLog(message) {
     const entry = `[${new Date().toLocaleTimeString()}] ${message}`;
@@ -77,8 +143,15 @@
 
   async function executeScan() {
     if (state.isScanning) return;
+    getAudioContext();
     state.isScanning = true;
     el.scanBtn.disabled = true;
+    el.scanBtn.classList.add('scanning');
+    el.scanBtn.textContent = 'Scanning...';
+    el.statusText.classList.add('scanning');
+    const signalsPanel = el.signalsList.closest('.panel');
+    if (signalsPanel) signalsPanel.classList.add('scanning-active');
+
     el.statusText.textContent = `Scanning (${state.mode})...`;
 
     try {
@@ -93,9 +166,20 @@
       el.statusText.textContent = `Scan complete (${result.signals.length} items)`;
 
       const validSetups = result.signals.filter(s => s.state === 'VALID SETUP');
+      let hasNewValidSetup = false;
+
       validSetups.forEach(v => {
-        addLog(`[${v.exchange}] ${v.symbol} ${v.side} VALID SETUP | Entry: ${fmtPrice(v.entry)} | SL: ${fmtPrice(v.sl)} | TP: ${fmtPrice(v.tp)} | RR: ${v.rr}`);
+        const alertKey = v.id || `${v.exchange}_${v.symbol}_${v.side}_${v.entry}`;
+        if (!state.alertedIds.has(alertKey)) {
+          state.alertedIds.add(alertKey);
+          hasNewValidSetup = true;
+          addLog(`[${v.exchange}] ${v.symbol} ${v.side} VALID SETUP | Entry: ${fmtPrice(v.entry)} | SL: ${fmtPrice(v.sl)} | TP: ${fmtPrice(v.tp)} | RR: ${v.rr}`);
+        }
       });
+
+      if (hasNewValidSetup) {
+        playAlertSound();
+      }
 
       renderSignals();
     } catch (err) {
@@ -104,10 +188,15 @@
     } finally {
       state.isScanning = false;
       el.scanBtn.disabled = false;
+      el.scanBtn.classList.remove('scanning');
+      el.scanBtn.textContent = 'Scan Now';
+      el.statusText.classList.remove('scanning');
+      if (signalsPanel) signalsPanel.classList.remove('scanning-active');
     }
   }
 
   function toggleAutoScan() {
+    getAudioContext();
     if (state.autoTimer) {
       clearInterval(state.autoTimer);
       state.autoTimer = null;
@@ -124,6 +213,8 @@
   }
 
   el.exchangeMode.value = state.mode;
+  syncSoundButton();
+
   el.exchangeMode.addEventListener('change', () => {
     state.mode = el.exchangeMode.value;
     localStorage.setItem(CONFIG.storageKeys.mode, state.mode);
@@ -134,8 +225,12 @@
   el.stateFilter.addEventListener('change', renderSignals);
   el.scanBtn.addEventListener('click', executeScan);
   el.autoBtn.addEventListener('click', toggleAutoScan);
+  if (el.soundBtn) {
+    el.soundBtn.addEventListener('click', toggleSound);
+  }
   el.clearLogBtn.addEventListener('click', () => {
     state.logs = [];
+    state.alertedIds.clear();
     localStorage.removeItem(CONFIG.storageKeys.logs);
     renderLogs();
   });
