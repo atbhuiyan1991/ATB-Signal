@@ -338,3 +338,121 @@ select, button {
   box-shadow: 0 0 8px #38bdf8;
   animation: blinkDot 1s infinite;
 }
+
+/* ===== SMC Signal Engine Live Radar ===== */
+.satellite-panel {
+  border-color: rgba(34, 211, 238, 0.35);
+  background: linear-gradient(180deg, rgba(19, 26, 38, 0.98), rgba(14, 23, 38, 0.98));
+}
+
+.sat-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.sat-beacon {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #22d3ee;
+  box-shadow: 0 0 12px #22d3ee;
+  animation: blinkDot 1.2s infinite;
+}
+
+.sat-beacon.paused {
+  background: #64748b;
+  box-shadow: none;
+  animation: none;
+}
+
+.sat-badge {
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 999px;
+  letter-spacing: 0.04em;
+}
+
+.sat-badge.live {
+  background: rgba(34, 211, 238, 0.14);
+  color: #22d3ee;
+  border: 1px solid rgba(34, 211, 238, 0.35);
+}
+
+.sat-badge.standby {
+  background: rgba(148, 163, 184, 0.14);
+  color: #94a3b8;
+  border: 1px solid rgba(148, 163, 184, 0.25);
+}
+
+.sat-grid {
+  display: grid;
+  grid-template-columns: 92px 1fr;
+  gap: 18px;
+  align-items: center;
+}
+
+.sat-radar-box {
+  position: relative;
+  width: 92px;
+  height: 92px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(34, 211, 238, 0.14) 0%, rgba(15, 23, 42, 0.9) 75%);
+  border: 1px solid rgba(34, 211, 238, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.sat-ring {
+  position: absolute;
+  border: 1px dashed rgba(34, 211, 238, 0.28);
+  border-radius: 50%;
+}
+
+.ring-1 { width: 64px; height: 64px; }
+.ring-2 { width: 38px; height: 38px; }
+
+.sat-sweep {
+  position: absolute;
+  width: 50%;
+  height: 50%;
+  top: 0;
+  left: 50%;
+  transform-origin: 0% 100%;
+  background: linear-gradient(90deg, rgba(34, 211, 238, 0.38), transparent);
+  animation: spin 2.6s linear infinite;
+}
+
+.satellite-panel.standby .sat-sweep {
+  animation-play-state: paused;
+  opacity: 0.25;
+}
+
+.sat-core {
+  position: relative;
+  z-index: 2;
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: #e0f2fe;
+}
+
+.sat-telemetry {
+  display: grid;
+  gap: 6px;
+  font-size: 0.85rem;
+}
+
+.sat-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--muted);
+}
+
+.sat-row strong {
+  color: var(--text);
+  text-align: right;
+}
