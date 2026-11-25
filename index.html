@@ -37,11 +37,44 @@
       </select>
       <button id="scanBtn" class="btn-primary">Scan Now</button>
       <button id="autoBtn" class="btn-secondary">Auto: OFF</button>
+      <button id="satBtn" class="btn-secondary active">Satellite: ON</button>
       <button id="soundBtn" class="btn-secondary active">Sound: ON</button>
     </div>
   </header>
 
   <main class="container">
+    <section class="panel satellite-panel" id="satellitePanel">
+      <div class="panel-head">
+        <div class="sat-title-wrap">
+          <span class="sat-beacon" id="satBeacon"></span>
+          <h2>SMC Signal Engine</h2>
+        </div>
+        <span id="satStatus" class="sat-badge live">ORBITAL LIVE</span>
+      </div>
+      <div class="sat-grid">
+        <div class="sat-radar-box">
+          <div class="sat-ring ring-1"></div>
+          <div class="sat-ring ring-2"></div>
+          <div class="sat-sweep"></div>
+          <div class="sat-core">SMC</div>
+        </div>
+        <div class="sat-telemetry">
+          <div class="sat-row">
+            <span>Active Feed:</span>
+            <strong id="satTarget">—</strong>
+          </div>
+          <div class="sat-row">
+            <span>Next Cycle In:</span>
+            <strong id="satCountdown">60s</strong>
+          </div>
+          <div class="sat-row">
+            <span>Top Liquid Movers:</span>
+            <strong id="satMovers">Loading live telemetry...</strong>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <section class="stats-grid" id="statsGrid">
       <div class="stat-card"><span>Scanned Coins</span><strong id="statScanned">0</strong></div>
       <div class="stat-card"><span>Watchlist</span><strong id="statWatchlist">0</strong></div>
