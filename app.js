@@ -1,14 +1,20 @@
 (() => {
   const SOUND_STORAGE_KEY = 'smc_engine_sound_v1';
+  const SAT_STORAGE_KEY = 'smc_engine_satellite_v1';
+  const SAT_POLL_MS = 12_000;
 
   const state = {
     signals: [],
     logs: JSON.parse(localStorage.getItem(CONFIG.storageKeys.logs) || '[]'),
     mode: localStorage.getItem(CONFIG.storageKeys.mode) || CONFIG.exchanges.defaultMode,
     soundEnabled: localStorage.getItem(SOUND_STORAGE_KEY) !== 'false',
+    satelliteEnabled: localStorage.getItem(SAT_STORAGE_KEY) !== 'false',
     alertedIds: new Set(),
     audioCtx: null,
     autoTimer: null,
+    satTimer: null,
+    countdownTimer: null,
+    nextScanAt: null,
     isScanning: false
   };
 
@@ -17,8 +23,15 @@
     stateFilter: document.getElementById('stateFilter'),
     scanBtn: document.getElementById('scanBtn'),
     autoBtn: document.getElementById('autoBtn'),
+    satBtn: document.getElementById('satBtn'),
     soundBtn: document.getElementById('soundBtn'),
     clearLogBtn: document.getElementById('clearLogBtn'),
+    satellitePanel: document.getElementById('satellitePanel'),
+    satBeacon: document.getElementById('satBeacon'),
+    satStatus: document.getElementById('satStatus'),
+    satTarget: document.getElementById('satTarget'),
+    satCountdown: document.getElementById('satCountdown'),
+    satMovers: document.getElementById('satMovers'),
     statScanned: document.getElementById('statScanned'),
     statWatchlist: document.getElementById('statWatchlist'),
     statValid: document.getElementById('statValid'),
@@ -106,6 +119,101 @@
     return val >= 1 ? Number(val).toFixed(2) : Number(val).toFixed(5);
   }
 
+  function formatPct(val) {
+    if (val === null || val === undefined || Number.isNaN(val)) return '0.00%';
+    const num = Number(val);
+    return `${num >= 0 ? '+' : ''}${num.toFixed(2)}%`;
+  }
+
+  function updateCountdownDisplay() {
+    if (!el.satCountdown) return;
+    if (!state.satelliteEnabled || !state.nextScanAt) {
+      el.satCountdown.textContent = 'STANDBY';
+      return;
+    }
+    const secLeft = Math.max(0, Math.ceil((state.nextScanAt - Date.now()) / 1000));
+    el.satCountdown.textContent = `${secLeft}s`;
+  }
+
+  function scheduleNextScanCycle() {
+    const interval = CONFIG.scanner.autoScanIntervalMs || 60_000;
+    state.nextScanAt = Date.now() + interval;
+    updateCountdownDisplay();
+
+    if (state.countdownTimer) clearInterval(state.countdownTimer);
+    state.countdownTimer = setInterval(updateCountdownDisplay, 1000);
+  }
+
+  async function pollSatelliteTelemetry() {
+    if (!state.satelliteEnabled) return;
+    try {
+      const exchanges = MarketAdapter.getActiveExchanges(state.mode);
+      const primaryEx = exchanges[0];
+      const tickers = await MarketAdapter.fetchTickersByExchange(primaryEx);
+
+      const topMovers = tickers
+        .filter(t => t.quoteVolume24h >= CONFIG.scanner.minQuoteVolume24h)
+        .sort((a, b) => Math.abs(b.priceChangePct24h) - Math.abs(a.priceChangePct24h))
+        .slice(0, 3);
+
+      if (el.satMovers) {
+        el.satMovers.textContent = topMovers.length
+          ? topMovers.map(m => `${m.symbol} (${formatPct(m.priceChangePct24h)})`).join(' • ')
+          : 'No active movers';
+      }
+      if (el.satTarget && !state.isScanning) {
+        el.satTarget.textContent = `${primaryEx} Telemetry (${tickers.length} pairs)`;
+      }
+    } catch (_) {
+      if (el.satMovers) {
+        el.satMovers.textContent = 'Telemetry reconnecting...';
+      }
+    }
+  }
+
+  function startSatelliteLoop() {
+    if (state.satTimer) clearInterval(state.satTimer);
+    if (!state.satelliteEnabled) {
+      if (el.satellitePanel) el.satellitePanel.classList.add('standby');
+      if (el.satBeacon) el.satBeacon.classList.add('paused');
+      if (el.satStatus) {
+        el.satStatus.textContent = 'STANDBY';
+        el.satStatus.className = 'sat-badge standby';
+      }
+      if (el.satTarget) el.satTarget.textContent = 'Offline';
+      updateCountdownDisplay();
+      return;
+    }
+
+    if (el.satellitePanel) el.satellitePanel.classList.remove('standby');
+    if (el.satBeacon) el.satBeacon.classList.remove('paused');
+    if (el.satStatus) {
+      el.satStatus.textContent = 'ORBITAL LIVE';
+      el.satStatus.className = 'sat-badge live';
+    }
+
+    pollSatelliteTelemetry();
+    state.satTimer = setInterval(pollSatelliteTelemetry, SAT_POLL_MS);
+
+    if (!state.autoTimer) {
+      el.autoBtn.textContent = 'Auto: ON';
+      el.autoBtn.classList.add('active');
+      state.autoTimer = setInterval(executeScan, CONFIG.scanner.autoScanIntervalMs);
+    }
+    scheduleNextScanCycle();
+  }
+
+  function toggleSatellite() {
+    state.satelliteEnabled = !state.satelliteEnabled;
+    localStorage.setItem(SAT_STORAGE_KEY, String(state.satelliteEnabled));
+    if (el.satBtn) {
+      el.satBtn.textContent = state.satelliteEnabled ? 'Satellite: ON' : 'Satellite: OFF';
+      el.satBtn.classList.toggle('active', state.satelliteEnabled);
+    }
+    addLog(state.satelliteEnabled ? 'SMC Signal Engine live mode enabled.' : 'SMC Signal Engine live mode paused.');
+    startSatelliteLoop();
+  }
+
   function renderSignals() {
     const filter = el.stateFilter.value;
     const list = filter === 'ALL'
@@ -157,6 +265,9 @@
     try {
       const result = await SignalScanner.runScan(state.mode, CONFIG, (exId, sym) => {
         el.statusText.textContent = `Checking [${exId}] ${sym}...`;
+        if (state.satelliteEnabled && el.satTarget) {
+          el.satTarget.textContent = `[${exId}] ${sym}`;
+        }
       });
 
       state.signals = result.signals;
@@ -192,6 +303,10 @@
       el.scanBtn.textContent = 'Scan Now';
       el.statusText.classList.remove('scanning');
       if (signalsPanel) signalsPanel.classList.remove('scanning-active');
+      if (state.satelliteEnabled) {
+        scheduleNextScanCycle();
+        pollSatelliteTelemetry();
+      }
     }
   }
 
@@ -209,11 +324,24 @@
       addLog(`Auto scan enabled (${CONFIG.scanner.autoScanIntervalMs / 1000}s).`);
       executeScan();
       state.autoTimer = setInterval(executeScan, CONFIG.scanner.autoScanIntervalMs);
+      scheduleNextScanCycle();
     }
   }
 
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && state.satelliteEnabled) {
+      pollSatelliteTelemetry();
+      updateCountdownDisplay();
+    }
+  });
+
   el.exchangeMode.value = state.mode;
   syncSoundButton();
+  if (el.satBtn) {
+    el.satBtn.textContent = state.satelliteEnabled ? 'Satellite: ON' : 'Satellite: OFF';
+    el.satBtn.classList.toggle('active', state.satelliteEnabled);
+    el.satBtn.addEventListener('click', toggleSatellite);
+  }
 
   el.exchangeMode.addEventListener('change', () => {
     state.mode = el.exchangeMode.value;
@@ -236,5 +364,6 @@
   });
 
   renderLogs();
+  startSatelliteLoop();
   executeScan();
 })();
