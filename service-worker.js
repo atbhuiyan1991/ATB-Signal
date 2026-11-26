@@ -1,4 +1,4 @@
-const CACHE_NAME = "smc-signal-engine-v5";
+const CACHE_NAME = "smc-signal-engine-v6";
 const STATIC_ASSETS = [
   "./",
   "./index.html",
