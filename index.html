@@ -42,60 +42,64 @@
     </div>
   </header>
 
-  <main class="container">
-    <section class="panel satellite-panel" id="satellitePanel">
-      <div class="panel-head">
-        <div class="sat-title-wrap">
-          <span class="sat-beacon" id="satBeacon"></span>
-          <h2>SMC Signal Engine</h2>
-        </div>
-        <span id="satStatus" class="sat-badge live">ORBITAL LIVE</span>
-      </div>
-      <div class="sat-grid">
-        <div class="sat-radar-box">
-          <div class="sat-ring ring-1"></div>
-          <div class="sat-ring ring-2"></div>
-          <div class="sat-sweep"></div>
-          <div class="sat-core">SMC</div>
-        </div>
-        <div class="sat-telemetry">
-          <div class="sat-row">
-            <span>Active Feed:</span>
-            <strong id="satTarget">—</strong>
+  <main class="container workspace-grid">
+    <aside class="left-column">
+      <section class="panel satellite-panel" id="satellitePanel">
+        <div class="panel-head">
+          <div class="sat-title-wrap">
+            <span class="sat-beacon" id="satBeacon"></span>
+            <h2>SMC Signal Engine</h2>
           </div>
-          <div class="sat-row">
-            <span>Next Cycle In:</span>
-            <strong id="satCountdown">60s</strong>
+          <span id="satStatus" class="sat-badge live">ORBITAL LIVE</span>
+        </div>
+        <div class="sat-grid">
+          <div class="sat-radar-box">
+            <div class="sat-ring ring-1"></div>
+            <div class="sat-ring ring-2"></div>
+            <div class="sat-sweep"></div>
+            <div class="sat-core">SMC</div>
           </div>
-          <div class="sat-row">
-            <span>Top Liquid Movers:</span>
-            <strong id="satMovers">Loading live telemetry...</strong>
+          <div class="sat-telemetry">
+            <div class="sat-row">
+              <span>Active Feed:</span>
+              <strong id="satTarget">—</strong>
+            </div>
+            <div class="sat-row">
+              <span>Next Cycle In:</span>
+              <strong id="satCountdown">60s</strong>
+            </div>
+            <div class="sat-row">
+              <span>Top Liquid Movers:</span>
+              <strong id="satMovers">Loading live telemetry...</strong>
+            </div>
           </div>
         </div>
-      </div>
-    </section>
+      </section>
 
-    <section class="stats-grid" id="statsGrid">
-      <div class="stat-card"><span>Scanned Coins</span><strong id="statScanned">0</strong></div>
-      <div class="stat-card"><span>Watchlist</span><strong id="statWatchlist">0</strong></div>
-      <div class="stat-card valid"><span>Valid Setups</span><strong id="statValid">0</strong></div>
-      <div class="stat-card"><span>Last Scan</span><strong id="statTime">—</strong></div>
-    </section>
+      <section class="stats-grid" id="statsGrid">
+        <div class="stat-card"><span>Scanned Coins</span><strong id="statScanned">0</strong></div>
+        <div class="stat-card"><span>Watchlist</span><strong id="statWatchlist">0</strong></div>
+        <div class="stat-card valid"><span>Valid Setups</span><strong id="statValid">0</strong></div>
+        <div class="stat-card"><span>Last Scan</span><strong id="statTime">—</strong></div>
+      </section>
+    </aside>
 
-    <section class="panel">
-      <div class="panel-head">
-        <h2>Detected Setups &amp; Watchlist States</h2>
-        <span id="statusText" class="status-text">Ready</span>
-      </div>
-      <div id="signalsList" class="signals-grid"></div>
-    </section>
+    <section class="right-column">
+      <section class="panel signals-side-panel">
+        <div class="panel-head">
+          <h2>Detected Setups &amp; Watchlist States</h2>
+          <span id="statusText" class="status-text">Ready</span>
+        </div>
+        <div id="signalsList" class="signals-grid"></div>
+      </section>
 
-    <section class="panel">
-      <div class="panel-head">
-        <h2>Event &amp; Alert Log</h2>
-        <button id="clearLogBtn" class="btn-ghost">Clear Log</button>
-      </div>
-      <ul id="logList" class="log-list"></ul>
+      <section class="panel">
+        <div class="panel-head">
+          <h2>Event &amp; Alert Log</h2>
+          <button id="clearLogBtn" class="btn-ghost">Clear Log</button>
+        </div>
+        <ul id="logList" class="log-list"></ul>
+      </section>
     </section>
   </main>
 
